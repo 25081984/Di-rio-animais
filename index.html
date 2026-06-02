@@ -64,7 +64,7 @@
             padding-bottom: 8px;
         }
 
-        /* Layout em colunas para separação por espécie */
+        /* Layout em duas colunas para separação por espécie */
         .species-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -155,6 +155,7 @@
         .btn-success {
             background-color: var(--success);
             width: 100%;
+            margin-top: 10px;
         }
 
         .btn-success:hover {
@@ -250,11 +251,23 @@
         <section class="card">
             <h2>Registrar Score Diário</h2>
             <form id="scoreForm" onsubmit="saveScore(event)">
-                <div class="form-group">
-                    <label for="petSelect">Selecione o Animal:</label>
-                    <select id="petSelect" required>
-                        <option value="" disabled selected>Escolha um animal...</option>
-                    </select>
+                
+                <div class="species-grid" style="margin-bottom: 15px;">
+                    
+                    <div class="form-group">
+                        <label for="dogSelect" style="color: var(--dog-color);">🐶 Selecionar Cão:</label>
+                        <select id="dogSelect" onchange="togglePetSelection('dog')">
+                            <option value="" selected>Escolha um cão...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="catSelect" style="color: var(--cat-color);">🐱 Selecionar Gato:</label>
+                        <select id="catSelect" onchange="togglePetSelection('cat')">
+                            <option value="" selected>Escolha um gato...</option>
+                        </select>
+                    </div>
+
                 </div>
 
                 <div class="form-group">
@@ -320,7 +333,7 @@
             renderHistory();
         });
 
-        // Função unificada para adicionar animal adaptada para receber a espécie e o ID do input correspondente
+        // Adicionar animal (Cão ou Gato)
         function addPet(type, inputId) {
             const petNameInput = document.getElementById(inputId);
             const name = petNameInput.value.trim();
@@ -330,45 +343,72 @@
                 return;
             }
 
-            // Evitar animais duplicados com o mesmo nome
-            if (pets.some(pet => pet.name.toLowerCase() === name.toLowerCase())) {
-                alert("Este animal já está cadastrado.");
+            if (pets.some(pet => pet.name.toLowerCase() === name.toLowerCase() && pet.type === type)) {
+                alert(`Este ${type.toLowerCase()} já está cadastrado.`);
                 return;
             }
 
             pets.push({ name, type });
             localStorage.setItem('pets', JSON.stringify(pets));
             
-            petNameInput.value = ''; // Limpa o respetivo input
+            petNameInput.value = '';
             updatePetDropdowns();
         }
 
+        // Atualizar ambos os dropdowns separadamente
         function updatePetDropdowns() {
-            const petSelect = document.getElementById('petSelect');
-            petSelect.innerHTML = '<option value="" disabled selected>Escolha um animal...</option>';
+            const dogSelect = document.getElementById('dogSelect');
+            const catSelect = document.getElementById('catSelect');
+            
+            dogSelect.innerHTML = '<option value="" selected>Escolha um cão...</option>';
+            catSelect.innerHTML = '<option value="" selected>Escolha um gato...</option>';
 
-            // Ordena alfabeticamente para exibição organizada
+            // Ordena e filtra os animais por espécie
             pets.sort((a, b) => a.name.localeCompare(b.name)).forEach(pet => {
                 const option = document.createElement('option');
                 option.value = JSON.stringify(pet);
-                option.textContent = `${pet.name} (${pet.type})`;
-                petSelect.appendChild(option);
+                option.textContent = pet.name;
+
+                if (pet.type === 'Cão') {
+                    dogSelect.appendChild(option);
+                } else if (pet.type === 'Gato') {
+                    catSelect.appendChild(option);
+                }
             });
         }
 
+        // Alterna a seleção: ao escolher um cão, limpa o campo do gato e vice-versa
+        function togglePetSelection(chosenType) {
+            if (chosenType === 'dog') {
+                document.getElementById('catSelect').selectedIndex = 0;
+            } else {
+                document.getElementById('dogSelect').selectedIndex = 0;
+            }
+        }
+
+        // Gravar registro
         function saveScore(event) {
             event.preventDefault();
 
-            const petSelect = document.getElementById('petSelect');
+            const dogSelect = document.getElementById('dogSelect');
+            const catSelect = document.getElementById('catSelect');
             const fecalScore = document.getElementById('fecalScore').value;
             const logDate = document.getElementById('logDate').value;
 
-            if (!petSelect.value || !fecalScore || !logDate) {
-                alert("Por favor, preencha todos os campos.");
+            // Verifica qual select foi utilizado
+            const selectedValue = dogSelect.value || catSelect.value;
+
+            if (!selectedValue) {
+                alert("Por favor, selecione um Cão ou um Gato.");
                 return;
             }
 
-            const petData = JSON.parse(petSelect.value);
+            if (!fecalScore || !logDate) {
+                alert("Por favor, preencha o score e a data.");
+                return;
+            }
+
+            const petData = JSON.parse(selectedValue);
 
             const newLog = {
                 id: Date.now(),
@@ -381,6 +421,7 @@
             historyLogs.unshift(newLog);
             localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
 
+            // Reseta formulário e mantém data atual
             document.getElementById('scoreForm').reset();
             document.getElementById('logDate').valueAsDate = new Date();
             document.getElementById('scoreHelp').textContent = '';
