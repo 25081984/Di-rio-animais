@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitorização Fecal Pet</title>
+    
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --dark: #2c3e50;
+            --light: #f5f7fa;
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: #7f8c8d;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.inline {
+            flex-direction: row;
+            gap: 10px;
+        }
+
+        .form-group.inline input {
+            flex: 2;
+        }
+
+        .form-group.inline select {
+            flex: 1;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid #ccd1d9;
+            border-radius: 4px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--primary);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            width: 100%;
+        }
+
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-delete {
+            background-color: var(--danger);
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .btn-delete:hover {
+            background-color: #c0392b;
+        }
+
+        .help-text {
+            margin-top: 5px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        /* Tabelas */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #e6e9ed;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        /* Cores dinâmicas para os scores */
+        .score-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+        }
+        .score-1 { background-color: #e74c3c; } /* Diarreia vermelha */
+        .score-2 { background-color: #e67e22; }
+        .score-3 { background-color: #f1c40f; color: #2c3e50; }
+        .score-4 { background-color: #2ecc71; } /* Ideal Verde */
+        .score-5 { background-color: #95a5a6; }
+        .score-6 { background-color: #34495e; } /* Ressecada Escuro */
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🐾 Diário de Score Fecal</h1>
+            <p>Monitore a saúde gastrointestinal dos seus cães e gatos</p>
+        </header>
+
+        <section class="card">
+            <h2>Gerenciar Animais</h2>
+            <div class="form-group inline">
+                <input type="text" id="petName" placeholder="Nome do pet (ex: Thor, Mia)">
+                <select id="petType">
+                    <option value="Cão">Cão</option>
+                    <option value="Gato">Gato</option>
+                </select>
+                <button onclick="addPet()">Adicionar Pet</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Registrar Score Diário</h2>
+            <form id="scoreForm" onsubmit="saveScore(event)">
+                <div class="form-group">
+                    <label for="petSelect">Selecione o Animal:</label>
+                    <select id="petSelect" required>
+                        <option value="" disabled selected>Escolha um animal...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="fecalScore">Score Fecal (1 a 6):</label>
+                    <select id="fecalScore" required onchange="updateScoreDescription()">
+                        <option value="" disabled selected>Selecione o score...</option>
+                        <option value="1">1 - Diarreia líquida / Aquosa</option>
+                        <option value="2">2 - Pastosa / Forma mal definida</option>
+                        <option value="3">3 - Úmida / Formada, mas deixa marcas</option>
+                        <option value="4">4 - Ideal / Bem formada, firme, não deixa marcas</option>
+                        <option value="5">5 - Seca / Dura, fragmenta-se facilmente</option>
+                        <option value="6">6 - Ressecadas / Extremamente duras (Constipação)</option>
+                    </select>
+                    <small id="scoreHelp" class="help-text"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="logDate">Data:</label>
+                    <input type="date" id="logDate" required>
+                </div>
+
+                <button type="submit" class="btn-success">Gravar Registro</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Histórico de Registros</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Animal</th>
+                            <th>Tipo</th>
+                            <th>Score</th>
+                            <th>Descrição</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Inicialização do Banco de Dados Local no Navegador
+        let pets = JSON.parse(localStorage.getItem('pets')) || [];
+        let historyLogs = JSON.parse(localStorage.getItem('historyLogs')) || [];
+
+        // Mapeamento de descrições para o histórico
+        const scoreDescriptions = {
+            1: "Diarreia líquida",
+            2: "Pastosa / Mal definida",
+            3: "Úmida / Deixa marcas",
+            4: "Ideal / Firme",
+            5: "Seca / Dura",
+            6: "Ressecada (Constipação)"
+        };
+
+        // Executado ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            // Define a data atual por padrão no campo de data
+            document.getElementById('logDate').valueAsDate = new Date();
+            updatePetDropdowns();
+            renderHistory();
+        });
+
+        // Adicionar novo Animal
+        function addPet() {
+            const petNameInput = document.getElementById('petName');
+            const petTypeSelect = document.getElementById('petType');
+            
+            const name = petNameInput.value.trim();
+            const type = petTypeSelect.value;
+
+            if (!name) {
+                alert("Por favor, digite o nome do animal.");
+                return;
+            }
+
+            // Evitar animais duplicados com o mesmo nome
+            if (pets.some(pet => pet.name.toLowerCase() === name.toLowerCase())) {
+                alert("Este animal já está cadastrado.");
+                return;
+            }
+
+            pets.push({ name, type });
+            localStorage.setItem('pets', JSON.stringify(pets));
+            
+            petNameInput.value = ''; // Limpa o campo de texto
+            updatePetDropdowns();
+        }
+
+        // Atualizar as listas suspensas (Dropdowns) com os animais cadastrados
+        function updatePetDropdowns() {
+            const petSelect = document.getElementById('petSelect');
+            
+            // Limpa mantendo apenas a primeira opção padrão
+            petSelect.innerHTML = '<option value="" disabled selected>Escolha um animal...</option>';
+
+            // Ordena os animais por ordem alfabética
+            pets.sort((a, b) => a.name.localeCompare(b.name)).forEach(pet => {
+                const option = document.createElement('option');
+                option.value = JSON.stringify(pet); // Armazena o objeto do pet formatado em string
+                option.textContent = `${pet.name} (${pet.type})`;
+                petSelect.appendChild(option);
+            });
+        }
+
+        // Gravar Registro de Score
+        function saveScore(event) {
+            event.preventDefault();
+
+            const petSelect = document.getElementById('petSelect');
+            const fecalScore = document.getElementById('fecalScore').value;
+            const logDate = document.getElementById('logDate').value;
+
+            if (!petSelect.value || !fecalScore || !logDate) {
+                alert("Por favor, preencha todos os campos.");
+                return;
+            }
+
+            const petData = JSON.parse(petSelect.value);
+
+            const newLog = {
+                id: Date.now(), // ID único baseado no timestamp para exclusão segura
+                petName: petData.name,
+                petType: petData.type,
+                score: parseInt(fecalScore),
+                date: formatDate(logDate)
+            };
+
+            historyLogs.unshift(newLog); // Adiciona o registro mais recente no topo da lista
+            localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
+
+            // Reseta o formulário e repõe a data de hoje
+            document.getElementById('scoreForm').reset();
+            document.getElementById('logDate').valueAsDate = new Date();
+            document.getElementById('scoreHelp').textContent = '';
+
+            renderHistory();
+        }
+
+        // Formata data de AAAA-MM-DD para DD/MM/AAAA
+        function formatDate(dateString) {
+            const parts = dateString.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Exibir o histórico na tabela
+        function renderHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            if (historyLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#95a5a6;">Nenhum registro encontrado.</td></tr>`;
+                return;
+            }
+
+            historyLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td>${log.date}</td>
+                    <td><strong>${log.petName}</strong></td>
+                    <td>${log.petType}</td>
+                    <td><span class="score-badge score-${log.score}">${log.score}</span></td>
+                    <td>${scoreDescriptions[log.score]}</td>
+                    <td><button class="btn-delete" onclick="deleteLog(${log.id})">Excluir</button></td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Eliminar um registro do histórico
+        function deleteLog(id) {
+            if (confirm("Deseja realmente apagar este registro?")) {
+                historyLogs = historyLogs.filter(log => log.id !== id);
+                localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
+                renderHistory();
+            }
+        }
+
+        // Feedback de texto e cor em tempo real ao selecionar um score
+        function updateScoreDescription() {
+            const score = document.getElementById('fecalScore').value;
+            const helpText = document.getElementById('scoreHelp');
+            
+            if(score) {
+                helpText.textContent = `Selecionado: ${scoreDescriptions[score]}`;
+                helpText.className = `help-text`;
+                
+                // Altera as cores do texto auxiliar conforme a gravidade
+                if (score == 1 || score == 6) helpText.style.color = '#e74c3c'; // Alerta (Vermelho)
+                else if (score == 4) helpText.style.color = '#2ecc71';          // Ideal (Verde)
+                else helpText.style.color = '#e67e22';                         // Moderado (Laranja)
+            }
+        }
+    </script>
+</body>
+</html>
