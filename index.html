@@ -13,6 +13,8 @@
             --dark: #2c3e50;
             --light: #f5f7fa;
             --card-bg: #ffffff;
+            --dog-color: #e67e22;
+            --cat-color: #9b59b6;
         }
 
         * {
@@ -62,6 +64,39 @@
             padding-bottom: 8px;
         }
 
+        /* Layout em colunas para separação por espécie */
+        .species-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .species-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .species-zone {
+            padding: 15px;
+            border-radius: 6px;
+            background-color: #fcfdfd;
+            border: 1px dashed #ccd1d9;
+        }
+
+        .species-zone.dog { border-color: var(--dog-color); }
+        .species-zone.cat { border-color: var(--cat-color); }
+
+        .species-zone h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .species-zone.dog h3 { color: var(--dog-color); }
+        .species-zone.cat h3 { color: var(--cat-color); }
+
         .form-group {
             margin-bottom: 15px;
             display: flex;
@@ -75,10 +110,6 @@
 
         .form-group.inline input {
             flex: 2;
-        }
-
-        .form-group.inline select {
-            flex: 1;
         }
 
         label {
@@ -114,6 +145,12 @@
         button:hover {
             background-color: #357abd;
         }
+
+        .btn-dog { background-color: var(--dog-color); }
+        .btn-dog:hover { background-color: #d35400; }
+
+        .btn-cat { background-color: var(--cat-color); }
+        .btn-cat:hover { background-color: #8e44ad; }
 
         .btn-success {
             background-color: var(--success);
@@ -171,12 +208,12 @@
             color: white;
             display: inline-block;
         }
-        .score-1 { background-color: #e74c3c; } /* Diarreia vermelha */
+        .score-1 { background-color: #e74c3c; }
         .score-2 { background-color: #e67e22; }
         .score-3 { background-color: #f1c40f; color: #2c3e50; }
-        .score-4 { background-color: #2ecc71; } /* Ideal Verde */
+        .score-4 { background-color: #2ecc71; }
         .score-5 { background-color: #95a5a6; }
-        .score-6 { background-color: #34495e; } /* Ressecada Escuro */
+        .score-6 { background-color: #34495e; }
     </style>
 </head>
 <body>
@@ -189,13 +226,24 @@
 
         <section class="card">
             <h2>Gerenciar Animais</h2>
-            <div class="form-group inline">
-                <input type="text" id="petName" placeholder="Nome do pet (ex: Thor, Mia)">
-                <select id="petType">
-                    <option value="Cão">Cão</option>
-                    <option value="Gato">Gato</option>
-                </select>
-                <button onclick="addPet()">Adicionar Pet</button>
+            <div class="species-grid">
+                
+                <div class="species-zone dog">
+                    <h3>🐶 Cadastrar Cão</h3>
+                    <div class="form-group inline">
+                        <input type="text" id="dogName" placeholder="Nome do cão">
+                        <button class="btn-dog" onclick="addPet('Cão', 'dogName')">Adicionar</button>
+                    </div>
+                </div>
+
+                <div class="species-zone cat">
+                    <h3>🐱 Cadastrar Gato</h3>
+                    <div class="form-group inline">
+                        <input type="text" id="catName" placeholder="Nome do gato">
+                        <button class="btn-cat" onclick="addPet('Gato', 'catName')">Adicionar</button>
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -240,7 +288,7 @@
                         <tr>
                             <th>Data</th>
                             <th>Animal</th>
-                            <th>Tipo</th>
+                            <th>Espécie</th>
                             <th>Score</th>
                             <th>Descrição</th>
                             <th>Ação</th>
@@ -254,11 +302,9 @@
     </div>
 
     <script>
-        // Inicialização do Banco de Dados Local no Navegador
         let pets = JSON.parse(localStorage.getItem('pets')) || [];
         let historyLogs = JSON.parse(localStorage.getItem('historyLogs')) || [];
 
-        // Mapeamento de descrições para o histórico
         const scoreDescriptions = {
             1: "Diarreia líquida",
             2: "Pastosa / Mal definida",
@@ -268,24 +314,19 @@
             6: "Ressecada (Constipação)"
         };
 
-        // Executado ao carregar a página
         document.addEventListener('DOMContentLoaded', () => {
-            // Define a data atual por padrão no campo de data
             document.getElementById('logDate').valueAsDate = new Date();
             updatePetDropdowns();
             renderHistory();
         });
 
-        // Adicionar novo Animal
-        function addPet() {
-            const petNameInput = document.getElementById('petName');
-            const petTypeSelect = document.getElementById('petType');
-            
+        // Função unificada para adicionar animal adaptada para receber a espécie e o ID do input correspondente
+        function addPet(type, inputId) {
+            const petNameInput = document.getElementById(inputId);
             const name = petNameInput.value.trim();
-            const type = petTypeSelect.value;
 
             if (!name) {
-                alert("Por favor, digite o nome do animal.");
+                alert(`Por favor, digite o nome do ${type.toLowerCase()}.`);
                 return;
             }
 
@@ -298,27 +339,23 @@
             pets.push({ name, type });
             localStorage.setItem('pets', JSON.stringify(pets));
             
-            petNameInput.value = ''; // Limpa o campo de texto
+            petNameInput.value = ''; // Limpa o respetivo input
             updatePetDropdowns();
         }
 
-        // Atualizar as listas suspensas (Dropdowns) com os animais cadastrados
         function updatePetDropdowns() {
             const petSelect = document.getElementById('petSelect');
-            
-            // Limpa mantendo apenas a primeira opção padrão
             petSelect.innerHTML = '<option value="" disabled selected>Escolha um animal...</option>';
 
-            // Ordena os animais por ordem alfabética
+            // Ordena alfabeticamente para exibição organizada
             pets.sort((a, b) => a.name.localeCompare(b.name)).forEach(pet => {
                 const option = document.createElement('option');
-                option.value = JSON.stringify(pet); // Armazena o objeto do pet formatado em string
+                option.value = JSON.stringify(pet);
                 option.textContent = `${pet.name} (${pet.type})`;
                 petSelect.appendChild(option);
             });
         }
 
-        // Gravar Registro de Score
         function saveScore(event) {
             event.preventDefault();
 
@@ -334,17 +371,16 @@
             const petData = JSON.parse(petSelect.value);
 
             const newLog = {
-                id: Date.now(), // ID único baseado no timestamp para exclusão segura
+                id: Date.now(),
                 petName: petData.name,
                 petType: petData.type,
                 score: parseInt(fecalScore),
                 date: formatDate(logDate)
             };
 
-            historyLogs.unshift(newLog); // Adiciona o registro mais recente no topo da lista
+            historyLogs.unshift(newLog);
             localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
 
-            // Reseta o formulário e repõe a data de hoje
             document.getElementById('scoreForm').reset();
             document.getElementById('logDate').valueAsDate = new Date();
             document.getElementById('scoreHelp').textContent = '';
@@ -352,13 +388,11 @@
             renderHistory();
         }
 
-        // Formata data de AAAA-MM-DD para DD/MM/AAAA
         function formatDate(dateString) {
             const parts = dateString.split('-');
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
 
-        // Exibir o histórico na tabela
         function renderHistory() {
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
@@ -384,7 +418,6 @@
             });
         }
 
-        // Eliminar um registro do histórico
         function deleteLog(id) {
             if (confirm("Deseja realmente apagar este registro?")) {
                 historyLogs = historyLogs.filter(log => log.id !== id);
@@ -393,7 +426,6 @@
             }
         }
 
-        // Feedback de texto e cor em tempo real ao selecionar um score
         function updateScoreDescription() {
             const score = document.getElementById('fecalScore').value;
             const helpText = document.getElementById('scoreHelp');
@@ -402,10 +434,9 @@
                 helpText.textContent = `Selecionado: ${scoreDescriptions[score]}`;
                 helpText.className = `help-text`;
                 
-                // Altera as cores do texto auxiliar conforme a gravidade
-                if (score == 1 || score == 6) helpText.style.color = '#e74c3c'; // Alerta (Vermelho)
-                else if (score == 4) helpText.style.color = '#2ecc71';          // Ideal (Verde)
-                else helpText.style.color = '#e67e22';                         // Moderado (Laranja)
+                if (score == 1 || score == 6) helpText.style.color = '#e74c3c';
+                else if (score == 4) helpText.style.color = '#2ecc71';
+                else helpText.style.color = '#e67e22';
             }
         }
     </script>
