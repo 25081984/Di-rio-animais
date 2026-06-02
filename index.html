@@ -117,7 +117,7 @@
             font-size: 0.9rem;
         }
 
-        input, select {
+        input, select, textarea {
             padding: 10px;
             border: 1px solid #ccd1d9;
             border-radius: 4px;
@@ -126,7 +126,7 @@
             transition: border-color 0.2s;
         }
 
-        input:focus, select:focus {
+        input:focus, select:focus, textarea:focus {
             border-color: var(--primary);
         }
 
@@ -167,20 +167,31 @@
             font-size: 0.8rem;
         }
 
-        .btn-delete:hover {
-            background-color: #c0392b;
+        .btn-sync {
+            background-color: #7f8c8d;
+            font-size: 0.85rem;
+        }
+        
+        .btn-pdf {
+            background-color: #e74c3c;
+            font-size: 0.85rem;
         }
 
         .sync-box {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .btn-sync {
-            background-color: #7f8c8d;
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .button-group button {
             flex: 1;
-            font-size: 0.85rem;
+            min-width: 150px;
         }
 
         .help-text {
@@ -224,6 +235,16 @@
         .score-4 { background-color: #2ecc71; }
         .score-5 { background-color: #95a5a6; }
         .score-6 { background-color: #34495e; }
+
+        /* ESTILOS EXCLUSIVOS PARA IMPRESSÃO EM PDF */
+        @media print {
+            body { background-color: #fff; padding: 0; }
+            .card:not(.printable) { display: none !important; }
+            .btn-delete, header p { display: none !important; }
+            .card { box-shadow: none; padding: 0; }
+            th, td { padding: 8px; border-bottom: 1px solid #000; }
+            .score-badge { border: 1px solid #000; color: #000 !important; background: transparent !important; }
+        }
     </style>
 </head>
 <body>
@@ -234,13 +255,20 @@
             <p>Monitore a saúde gastrointestinal dos seus cães e gatos</p>
         </header>
 
-        <!-- Sincronização e Cópia de Segurança -->
+        <!-- Seção de Sincronização e PDF -->
         <section class="card">
-            <h2>Sincronizar entre Dispositivos</h2>
-            <p style="font-size: 0.85rem; color:#7f8c8d; margin-bottom: 10px;">Como os dados ficam guardados neste aparelho, use os botões abaixo para mover os dados para outro telemóvel ou computador.</p>
+            <h2>Compartilhar e Sincronizar</h2>
             <div class="sync-box">
-                <button class="btn-sync" onclick="exportData()">📤 Exportar Dados (Download)</button>
-                <button class="btn-sync" onclick="importData()">📥 Importar Dados</button>
+                <div class="button-group">
+                    <button class="btn-pdf" onclick="generatePDF()">📄 Gerar Relatório PDF</button>
+                    <button class="btn-sync" onclick="sendEmailBackup()">✉️ Enviar Dados por E-mail</button>
+                </div>
+                
+                <div class="form-group" style="margin-top: 10px;">
+                    <label for="importCode">Importar Dados Recebidos (Cole o código do e-mail aqui):</label>
+                    <textarea id="importCode" rows="2" placeholder="Cole aqui o código texto enviado por e-mail..."></textarea>
+                    <button class="btn-sync" onclick="importFromText()" style="margin-top: 8px; background-color: #2c3e50;">📥 Confirmar Importação</button>
+                </div>
             </div>
         </section>
 
@@ -307,8 +335,8 @@
             </form>
         </section>
 
-        <!-- Histórico -->
-        <section class="card">
+        <!-- Histórico (Classe printable adicionada para o PDF) -->
+        <section class="card printable">
             <h2>Histórico de Registros</h2>
             <div class="table-responsive">
                 <table>
@@ -319,7 +347,7 @@
                             <th>Espécie</th>
                             <th>Score</th>
                             <th>Descrição</th>
-                            <th>Ação</th>
+                            <th class="btn-delete">Ação</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody"></tbody>
@@ -412,7 +440,7 @@
                 tr.innerHTML = `
                     <td>${log.date}</td><td><strong>${log.petName}</strong></td><td>${log.petType}</td>
                     <td><span class="score-badge score-${log.score}">${log.score}</span></td><td>${scoreDescriptions[log.score]}</td>
-                    <td><button class="btn-delete" onclick="deleteLog(${log.id})">Excluir</button></td>
+                    <td class="btn-delete"><button class="btn-delete" onclick="deleteLog(${log.id})">Excluir</button></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -437,51 +465,55 @@
             }
         }
 
-        // --- NOVAS FUNÇÕES DE EXPORTAÇÃO/IMPORTAÇÃO ---
-        function exportData() {
-            const dataStr = JSON.stringify({ pets, historyLogs });
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
-            const exportFileDefaultName = 'backup_score_fecal.json';
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
+        // --- FUNÇÃO PARA IMPRIMIR EM PDF ---
+        function generatePDF() {
+            window.print(); // Ativa as configurações CSS de impressão ocultando botões e focando no histórico
         }
 
-        function importData() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
+        // --- ENVIAR BACKUP COMPATÍVEL VIA EMAIL ---
+        function sendEmailBackup() {
+            const dataStr = JSON.stringify({ pets, historyLogs });
+            const assunto = encodeURIComponent("Backup - Diário de Score Fecal");
             
-            input.onchange = e => {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.readAsText(file,'UTF-8');
-                
-                reader.onload = readerEvent => {
-                    try {
-                        const content = JSON.parse(readerEvent.target.result);
-                        if (content.pets && content.historyLogs) {
-                            if (confirm("Isso irá substituir os dados atuais deste aparelho pelos dados do arquivo. Continuar?")) {
-                                pets = content.pets;
-                                historyLogs = content.historyLogs;
-                                localStorage.setItem('pets', JSON.stringify(pets));
-                                localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
-                                updatePetDropdowns();
-                                renderHistory();
-                                alert("Dados importados com sucesso!");
-                            }
-                        } else {
-                            alert("Arquivo inválido.");
-                        }
-                    } catch (err) {
-                        alert("Erro ao ler o arquivo.");
-                    }
-                }
+            const corpoEmail = encodeURIComponent(
+                "Olá!\n\nEste é o código de sincronização do seu Diário de Score Fecal.\n" +
+                "Para importar estes dados em outro dispositivo, copie TODO o código abaixo, abra o sistema no outro aparelho e cole-o no campo de importação.\n\n" +
+                "CÓDIGO DE IMPORTAÇÃO:\n" + dataStr
+            );
+            
+            // Abre o aplicativo de email padrão do dispositivo
+            window.location.href = `mailto:?subject=${assunto}&body=${corpoEmail}`;
+        }
+
+        // --- IMPORTAR O TEXTO RECEBIDO NO OUTRO DISPOSITIVO ---
+        function importFromText() {
+            const codeArea = document.getElementById('importCode');
+            const codeText = codeArea.value.trim();
+
+            if (!codeText) {
+                alert("Por favor, cole o código do e-mail no campo de texto antes de importar.");
+                return;
             }
-            input.click();
+
+            try {
+                const content = JSON.parse(codeText);
+                if (content.pets && content.historyLogs) {
+                    if (confirm("Isto substituirá os dados locais deste dispositivo. Deseja prosseguir?")) {
+                        pets = content.pets;
+                        historyLogs = content.historyLogs;
+                        localStorage.setItem('pets', JSON.stringify(pets));
+                        localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
+                        updatePetDropdowns();
+                        renderHistory();
+                        codeArea.value = '';
+                        alert("Dados importados e sincronizados com sucesso!");
+                    }
+                } else {
+                    alert("O formato do código está incompleto ou incorreto.");
+                }
+            } catch (err) {
+                alert("Código inválido. Certifique-se de copiar todo o bloco de texto do e-mail.");
+            }
         }
     </script>
 </body>
