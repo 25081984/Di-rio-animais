@@ -64,7 +64,6 @@
             padding-bottom: 8px;
         }
 
-        /* Layout em duas colunas para separação por espécie */
         .species-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -172,13 +171,24 @@
             background-color: #c0392b;
         }
 
+        .sync-box {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-sync {
+            background-color: #7f8c8d;
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
         .help-text {
             margin-top: 5px;
             font-size: 0.85rem;
             font-weight: bold;
         }
 
-        /* Tabelas */
         .table-responsive {
             overflow-x: auto;
         }
@@ -201,7 +211,6 @@
             font-weight: 600;
         }
 
-        /* Cores dinâmicas para os scores */
         .score-badge {
             padding: 3px 8px;
             border-radius: 12px;
@@ -225,10 +234,20 @@
             <p>Monitore a saúde gastrointestinal dos seus cães e gatos</p>
         </header>
 
+        <!-- Sincronização e Cópia de Segurança -->
+        <section class="card">
+            <h2>Sincronizar entre Dispositivos</h2>
+            <p style="font-size: 0.85rem; color:#7f8c8d; margin-bottom: 10px;">Como os dados ficam guardados neste aparelho, use os botões abaixo para mover os dados para outro telemóvel ou computador.</p>
+            <div class="sync-box">
+                <button class="btn-sync" onclick="exportData()">📤 Exportar Dados (Download)</button>
+                <button class="btn-sync" onclick="importData()">📥 Importar Dados</button>
+            </div>
+        </section>
+
+        <!-- Gerenciar Animais -->
         <section class="card">
             <h2>Gerenciar Animais</h2>
             <div class="species-grid">
-                
                 <div class="species-zone dog">
                     <h3>🐶 Cadastrar Cão</h3>
                     <div class="form-group inline">
@@ -236,7 +255,6 @@
                         <button class="btn-dog" onclick="addPet('Cão', 'dogName')">Adicionar</button>
                     </div>
                 </div>
-
                 <div class="species-zone cat">
                     <h3>🐱 Cadastrar Gato</h3>
                     <div class="form-group inline">
@@ -244,30 +262,26 @@
                         <button class="btn-cat" onclick="addPet('Gato', 'catName')">Adicionar</button>
                     </div>
                 </div>
-
             </div>
         </section>
 
+        <!-- Registrar Score -->
         <section class="card">
             <h2>Registrar Score Diário</h2>
             <form id="scoreForm" onsubmit="saveScore(event)">
-                
                 <div class="species-grid" style="margin-bottom: 15px;">
-                    
                     <div class="form-group">
                         <label for="dogSelect" style="color: var(--dog-color);">🐶 Selecionar Cão:</label>
                         <select id="dogSelect" onchange="togglePetSelection('dog')">
                             <option value="" selected>Escolha um cão...</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label for="catSelect" style="color: var(--cat-color);">🐱 Selecionar Gato:</label>
                         <select id="catSelect" onchange="togglePetSelection('cat')">
                             <option value="" selected>Escolha um gato...</option>
                         </select>
                     </div>
-
                 </div>
 
                 <div class="form-group">
@@ -293,6 +307,7 @@
             </form>
         </section>
 
+        <!-- Histórico -->
         <section class="card">
             <h2>Histórico de Registros</h2>
             <div class="table-responsive">
@@ -307,8 +322,7 @@
                             <th>Ação</th>
                         </tr>
                     </thead>
-                    <tbody id="historyTableBody">
-                        </tbody>
+                    <tbody id="historyTableBody"></tbody>
                 </table>
             </div>
         </section>
@@ -319,12 +333,8 @@
         let historyLogs = JSON.parse(localStorage.getItem('historyLogs')) || [];
 
         const scoreDescriptions = {
-            1: "Diarreia líquida",
-            2: "Pastosa / Mal definida",
-            3: "Úmida / Deixa marcas",
-            4: "Ideal / Firme",
-            5: "Seca / Dura",
-            6: "Ressecada (Constipação)"
+            1: "Diarreia líquida", 2: "Pastosa / Mal definida", 3: "Úmida / Deixa marcas",
+            4: "Ideal / Firme", 5: "Seca / Dura", 6: "Ressecada (Constipação)"
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -333,99 +343,55 @@
             renderHistory();
         });
 
-        // Adicionar animal (Cão ou Gato)
         function addPet(type, inputId) {
             const petNameInput = document.getElementById(inputId);
             const name = petNameInput.value.trim();
-
-            if (!name) {
-                alert(`Por favor, digite o nome do ${type.toLowerCase()}.`);
-                return;
-            }
-
-            if (pets.some(pet => pet.name.toLowerCase() === name.toLowerCase() && pet.type === type)) {
-                alert(`Este ${type.toLowerCase()} já está cadastrado.`);
-                return;
-            }
-
+            if (!name) return alert(`Por favor, digite o nome.`);
+            if (pets.some(pet => pet.name.toLowerCase() === name.toLowerCase() && pet.type === type)) return alert("Já cadastrado.");
+            
             pets.push({ name, type });
             localStorage.setItem('pets', JSON.stringify(pets));
-            
             petNameInput.value = '';
             updatePetDropdowns();
         }
 
-        // Atualizar ambos os dropdowns separadamente
         function updatePetDropdowns() {
             const dogSelect = document.getElementById('dogSelect');
             const catSelect = document.getElementById('catSelect');
-            
             dogSelect.innerHTML = '<option value="" selected>Escolha um cão...</option>';
             catSelect.innerHTML = '<option value="" selected>Escolha um gato...</option>';
 
-            // Ordena e filtra os animais por espécie
             pets.sort((a, b) => a.name.localeCompare(b.name)).forEach(pet => {
                 const option = document.createElement('option');
                 option.value = JSON.stringify(pet);
                 option.textContent = pet.name;
-
-                if (pet.type === 'Cão') {
-                    dogSelect.appendChild(option);
-                } else if (pet.type === 'Gato') {
-                    catSelect.appendChild(option);
-                }
+                if (pet.type === 'Cão') dogSelect.appendChild(option);
+                else if (pet.type === 'Gato') catSelect.appendChild(option);
             });
         }
 
-        // Alterna a seleção: ao escolher um cão, limpa o campo do gato e vice-versa
         function togglePetSelection(chosenType) {
-            if (chosenType === 'dog') {
-                document.getElementById('catSelect').selectedIndex = 0;
-            } else {
-                document.getElementById('dogSelect').selectedIndex = 0;
-            }
+            if (chosenType === 'dog') document.getElementById('catSelect').selectedIndex = 0;
+            else document.getElementById('dogSelect').selectedIndex = 0;
         }
 
-        // Gravar registro
         function saveScore(event) {
             event.preventDefault();
-
             const dogSelect = document.getElementById('dogSelect');
             const catSelect = document.getElementById('catSelect');
             const fecalScore = document.getElementById('fecalScore').value;
             const logDate = document.getElementById('logDate').value;
 
-            // Verifica qual select foi utilizado
             const selectedValue = dogSelect.value || catSelect.value;
-
-            if (!selectedValue) {
-                alert("Por favor, selecione um Cão ou um Gato.");
-                return;
-            }
-
-            if (!fecalScore || !logDate) {
-                alert("Por favor, preencha o score e a data.");
-                return;
-            }
+            if (!selectedValue) return alert("Selecione um animal.");
 
             const petData = JSON.parse(selectedValue);
-
-            const newLog = {
-                id: Date.now(),
-                petName: petData.name,
-                petType: petData.type,
-                score: parseInt(fecalScore),
-                date: formatDate(logDate)
-            };
+            const newLog = { id: Date.now(), petName: petData.name, petType: petData.type, score: parseInt(fecalScore), date: formatDate(logDate) };
 
             historyLogs.unshift(newLog);
             localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
-
-            // Reseta formulário e mantém data atual
             document.getElementById('scoreForm').reset();
             document.getElementById('logDate').valueAsDate = new Date();
-            document.getElementById('scoreHelp').textContent = '';
-
             renderHistory();
         }
 
@@ -437,30 +403,23 @@
         function renderHistory() {
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
-
             if (historyLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#95a5a6;">Nenhum registro encontrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#95a5a6;">Nenhum registro.</td></tr>`;
                 return;
             }
-
             historyLogs.forEach(log => {
                 const tr = document.createElement('tr');
-                
                 tr.innerHTML = `
-                    <td>${log.date}</td>
-                    <td><strong>${log.petName}</strong></td>
-                    <td>${log.petType}</td>
-                    <td><span class="score-badge score-${log.score}">${log.score}</span></td>
-                    <td>${scoreDescriptions[log.score]}</td>
+                    <td>${log.date}</td><td><strong>${log.petName}</strong></td><td>${log.petType}</td>
+                    <td><span class="score-badge score-${log.score}">${log.score}</span></td><td>${scoreDescriptions[log.score]}</td>
                     <td><button class="btn-delete" onclick="deleteLog(${log.id})">Excluir</button></td>
                 `;
-                
                 tbody.appendChild(tr);
             });
         }
 
         function deleteLog(id) {
-            if (confirm("Deseja realmente apagar este registro?")) {
+            if (confirm("Apagar este registro?")) {
                 historyLogs = historyLogs.filter(log => log.id !== id);
                 localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
                 renderHistory();
@@ -470,15 +429,59 @@
         function updateScoreDescription() {
             const score = document.getElementById('fecalScore').value;
             const helpText = document.getElementById('scoreHelp');
-            
             if(score) {
                 helpText.textContent = `Selecionado: ${scoreDescriptions[score]}`;
-                helpText.className = `help-text`;
-                
                 if (score == 1 || score == 6) helpText.style.color = '#e74c3c';
                 else if (score == 4) helpText.style.color = '#2ecc71';
                 else helpText.style.color = '#e67e22';
             }
+        }
+
+        // --- NOVAS FUNÇÕES DE EXPORTAÇÃO/IMPORTAÇÃO ---
+        function exportData() {
+            const dataStr = JSON.stringify({ pets, historyLogs });
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = 'backup_score_fecal.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file,'UTF-8');
+                
+                reader.onload = readerEvent => {
+                    try {
+                        const content = JSON.parse(readerEvent.target.result);
+                        if (content.pets && content.historyLogs) {
+                            if (confirm("Isso irá substituir os dados atuais deste aparelho pelos dados do arquivo. Continuar?")) {
+                                pets = content.pets;
+                                historyLogs = content.historyLogs;
+                                localStorage.setItem('pets', JSON.stringify(pets));
+                                localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
+                                updatePetDropdowns();
+                                renderHistory();
+                                alert("Dados importados com sucesso!");
+                            }
+                        } else {
+                            alert("Arquivo inválido.");
+                        }
+                    } catch (err) {
+                        alert("Erro ao ler o arquivo.");
+                    }
+                }
+            }
+            input.click();
         }
     </script>
 </body>
