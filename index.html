@@ -31,7 +31,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
@@ -130,6 +130,11 @@
             border-color: var(--primary);
         }
 
+        textarea {
+            resize: vertical;
+            font-family: inherit;
+        }
+
         button {
             padding: 10px 20px;
             border: none;
@@ -215,11 +220,20 @@
             padding: 12px;
             border-bottom: 1px solid #e6e9ed;
             font-size: 0.95rem;
+            vertical-align: top;
         }
 
         th {
             background-color: #f8f9fa;
             font-weight: 600;
+        }
+
+        .obs-text {
+            font-size: 0.85rem;
+            color: #555;
+            max-width: 200px;
+            word-wrap: break-word;
+            font-style: italic;
         }
 
         .score-badge {
@@ -244,6 +258,7 @@
             .card { box-shadow: none; padding: 0; }
             th, td { padding: 8px; border-bottom: 1px solid #000; }
             .score-badge { border: 1px solid #000; color: #000 !important; background: transparent !important; }
+            .obs-text { max-width: none; }
         }
     </style>
 </head>
@@ -326,6 +341,12 @@
                     <small id="scoreHelp" class="help-text"></small>
                 </div>
 
+                <!-- CAMPO OBSERVAÇÕES ADICIONADO -->
+                <div class="form-group">
+                    <label for="logObservations">Observações Diárias (Opcional):</label>
+                    <textarea id="logObservations" rows="2" placeholder="Ex: Comeu grama, remédio administrado, presença de muco..."></textarea>
+                </div>
+
                 <div class="form-group">
                     <label for="logDate">Data:</label>
                     <input type="date" id="logDate" required>
@@ -335,7 +356,7 @@
             </form>
         </section>
 
-        <!-- Histórico (Classe printable adicionada para o PDF) -->
+        <!-- Histórico -->
         <section class="card printable">
             <h2>Histórico de Registros</h2>
             <div class="table-responsive">
@@ -347,6 +368,7 @@
                             <th>Espécie</th>
                             <th>Score</th>
                             <th>Descrição</th>
+                            <th>Observações</th>
                             <th class="btn-delete">Ação</th>
                         </tr>
                     </thead>
@@ -356,6 +378,7 @@
         </section>
     </div>
 
+    <!-- LÓGICA JAVASCRIPT -->
     <script>
         let pets = JSON.parse(localStorage.getItem('pets')) || [];
         let historyLogs = JSON.parse(localStorage.getItem('historyLogs')) || [];
@@ -409,17 +432,30 @@
             const catSelect = document.getElementById('catSelect');
             const fecalScore = document.getElementById('fecalScore').value;
             const logDate = document.getElementById('logDate').value;
+            const observations = document.getElementById('logObservations').value.trim();
 
             const selectedValue = dogSelect.value || catSelect.value;
             if (!selectedValue) return alert("Selecione um animal.");
 
             const petData = JSON.parse(selectedValue);
-            const newLog = { id: Date.now(), petName: petData.name, petType: petData.type, score: parseInt(fecalScore), date: formatDate(logDate) };
+            
+            const newLog = { 
+                id: Date.now(), 
+                petName: petData.name, 
+                petType: petData.type, 
+                score: parseInt(fecalScore), 
+                date: formatDate(logDate),
+                obs: observations || "-" // Salva hífen caso esteja vazio
+            };
 
             historyLogs.unshift(newLog);
             localStorage.setItem('historyLogs', JSON.stringify(historyLogs));
+            
+            // Reseta formulário e mantém data atual
             document.getElementById('scoreForm').reset();
             document.getElementById('logDate').valueAsDate = new Date();
+            document.getElementById('scoreHelp').textContent = '';
+            
             renderHistory();
         }
 
@@ -432,14 +468,18 @@
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
             if (historyLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#95a5a6;">Nenhum registro.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#95a5a6;">Nenhum registro.</td></tr>`;
                 return;
             }
             historyLogs.forEach(log => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${log.date}</td><td><strong>${log.petName}</strong></td><td>${log.petType}</td>
-                    <td><span class="score-badge score-${log.score}">${log.score}</span></td><td>${scoreDescriptions[log.score]}</td>
+                    <td>${log.date}</td>
+                    <td><strong>${log.petName}</strong></td>
+                    <td>${log.petType}</td>
+                    <td><span class="score-badge score-${log.score}">${log.score}</span></td>
+                    <td>${scoreDescriptions[log.score]}</td>
+                    <td><div class="obs-text">${log.obs || '-'}</div></td>
                     <td class="btn-delete"><button class="btn-delete" onclick="deleteLog(${log.id})">Excluir</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -465,35 +505,26 @@
             }
         }
 
-        // --- FUNÇÃO PARA IMPRIMIR EM PDF ---
         function generatePDF() {
-            window.print(); // Ativa as configurações CSS de impressão ocultando botões e focando no histórico
+            window.print();
         }
 
-        // --- ENVIAR BACKUP COMPATÍVEL VIA EMAIL ---
         function sendEmailBackup() {
             const dataStr = JSON.stringify({ pets, historyLogs });
             const assunto = encodeURIComponent("Backup - Diário de Score Fecal");
-            
             const corpoEmail = encodeURIComponent(
                 "Olá!\n\nEste é o código de sincronização do seu Diário de Score Fecal.\n" +
                 "Para importar estes dados em outro dispositivo, copie TODO o código abaixo, abra o sistema no outro aparelho e cole-o no campo de importação.\n\n" +
                 "CÓDIGO DE IMPORTAÇÃO:\n" + dataStr
             );
-            
-            // Abre o aplicativo de email padrão do dispositivo
             window.location.href = `mailto:?subject=${assunto}&body=${corpoEmail}`;
         }
 
-        // --- IMPORTAR O TEXTO RECEBIDO NO OUTRO DISPOSITIVO ---
         function importFromText() {
             const codeArea = document.getElementById('importCode');
             const codeText = codeArea.value.trim();
 
-            if (!codeText) {
-                alert("Por favor, cole o código do e-mail no campo de texto antes de importar.");
-                return;
-            }
+            if (!codeText) return alert("Cole o código antes de importar.");
 
             try {
                 const content = JSON.parse(codeText);
@@ -506,13 +537,13 @@
                         updatePetDropdowns();
                         renderHistory();
                         codeArea.value = '';
-                        alert("Dados importados e sincronizados com sucesso!");
+                        alert("Dados importados com sucesso!");
                     }
                 } else {
-                    alert("O formato do código está incompleto ou incorreto.");
+                    alert("Formato incorreto.");
                 }
             } catch (err) {
-                alert("Código inválido. Certifique-se de copiar todo o bloco de texto do e-mail.");
+                alert("Código inválido.");
             }
         }
     </script>
